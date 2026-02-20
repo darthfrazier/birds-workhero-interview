@@ -5,6 +5,8 @@ import { app } from '../src/index.js';
 const mockDb = vi.hoisted(() => ({
   getRange: vi.fn<() => { key: string; value: unknown }[]>(),
   put: vi.fn().mockResolvedValue(true),
+  get: vi.fn().mockReturnValue(undefined),
+  transaction: vi.fn((cb: () => unknown) => cb()),
 }));
 
 vi.mock('lmdb', () => ({

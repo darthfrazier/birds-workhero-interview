@@ -14,7 +14,7 @@ vi.mock('lmdb', () => ({
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-import { claimJob, processJob } from '../worker.js';
+import { claimJob, processJob } from '../daemons/worker.js';
 
 const baseJob = { id: 'job-1', name: 'Robin', status: 'queued', createdAt: '2026-01-01T00:00:00.000Z' };
 
