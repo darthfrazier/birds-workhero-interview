@@ -5,7 +5,7 @@ import { Metrics } from './observability/metrics.js';
 const db = open({ path: './data' });
 const metrics = new Metrics();
 
-async function claimJob(): Promise<Job | null> {
+export async function claimJob(): Promise<Job | null> {
   return db.transaction(() => {
     for (const { key, value } of db.getRange()) {
       const job = value as Job;
@@ -45,7 +45,7 @@ async function fetchWikipedia(name: string): Promise<{ extract?: string } | null
   return null;
 }
 
-async function processJob(job: Job, workerId: number): Promise<void> {
+export async function processJob(job: Job, workerId: number): Promise<void> {
   try {
     const page = await fetchWikipedia(job.name);
     await db.put(job.id, { ...job, status: 'complete', result: page?.extract ?? null });
@@ -73,6 +73,8 @@ async function runWorker(workerId: number): Promise<void> {
   }
 }
 
-const concurrency = parseInt(process.env.WORKER_CONCURRENCY ?? '1', 10);
-console.log(`Starting ${concurrency} worker(s)`);
-Promise.all(Array.from({ length: concurrency }, (_, i) => runWorker(i + 1)));
+if (process.env.NODE_ENV !== 'test') {
+  const concurrency = parseInt(process.env.WORKER_CONCURRENCY ?? '1', 10);
+  console.log(`Starting ${concurrency} worker(s)`);
+  Promise.all(Array.from({ length: concurrency }, (_, i) => runWorker(i + 1)));
+}
