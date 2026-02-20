@@ -2,16 +2,19 @@ import express from 'express';
 import { open } from 'lmdb';
 import { randomUUID } from 'crypto';
 import type { Job } from './types.js';
+import { Metrics } from '../observability/metrics.js';
 
 const app = express();
 const port = 3200;
 
 const db = open({ path: './data' });
+const metrics = new Metrics();
 
 app.use(express.json());
 
 app.get('/bird', (req, res) => {
   const { name } = req.query;
+  void metrics.recordJobResultRequest();
 
   for (const { value } of db.getRange()) {
     const job = value as Job;
@@ -42,6 +45,7 @@ app.post('/bird', async (req, res) => {
   const id = randomUUID();
   const job = { id, name, status: 'queued', createdAt: new Date().toISOString() };
   await db.put(id, job);
+  await metrics.recordJobCreated();
   res.status(201).json(job);
 });
 

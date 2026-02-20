@@ -1,7 +1,9 @@
 import { open } from 'lmdb';
 import type { Job } from './src/types.js';
+import { Metrics } from './observability/metrics.js';
 
 const db = open({ path: './data' });
+const metrics = new Metrics();
 
 async function claimJob(): Promise<Job | null> {
   return db.transaction(() => {
@@ -43,13 +45,15 @@ async function fetchWikipedia(name: string): Promise<{ extract?: string } | null
   return null;
 }
 
-async function processJob(job: Job): Promise<void> {
+async function processJob(job: Job, workerId: number): Promise<void> {
   try {
     const page = await fetchWikipedia(job.name);
     await db.put(job.id, { ...job, status: 'complete', result: page?.extract ?? null });
+    await metrics.recordJobProcessed(workerId);
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     await db.put(job.id, { ...job, status: 'failed', error });
+    await metrics.recordProcessingError();
   }
 }
 
@@ -61,7 +65,7 @@ async function runWorker(workerId: number): Promise<void> {
 
     if (job) {
       console.log(`[Worker ${workerId}] Claimed job ${job.id} (${job.name})`);
-      await processJob(job);
+      await processJob(job, workerId);
       console.log(`[Worker ${workerId}] Finished job ${job.id}`);
     } else {
       await new Promise(resolve => setTimeout(resolve, 1000));
